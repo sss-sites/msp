@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSS Minecraft Sound Packager</title>
+  
+  <!-- Google Fonts: DotGothic16 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- JSZip CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Ogg Vorbis Encoder CDN -->
+  <script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.js"></script>
+
+  <style>
+    body {
+      font-family: 'DotGothic16', sans-serif;
+      background-color: #121316;
+    }
+
+    /* Minecraft風 立体ボタンスタイル */
+    .mc-btn {
+      position: relative;
+      border: 2px solid #000;
+      border-top-color: rgba(255, 255, 255, 0.4);
+      border-left-color: rgba(255, 255, 255, 0.4);
+      border-bottom-color: rgba(0, 0, 0, 0.6);
+      border-right-color: rgba(0, 0, 0, 0.6);
+      box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.25);
+      transition: all 0.05s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .mc-btn:active:not(:disabled) {
+      border-top-color: rgba(0, 0, 0, 0.6);
+      border-left-color: rgba(0, 0, 0, 0.6);
+      border-bottom-color: rgba(255, 255, 255, 0.4);
+      border-right-color: rgba(255, 255, 255, 0.4);
+      box-shadow: inset 2px 2px 0px rgba(0,0,0,0.4);
+      transform: translateY(2px);
+    }
+    .mc-btn-green {
+      background-color: #3b8526;
+      color: #ffffff;
+    }
+    .mc-btn-green:hover:not(:disabled) {
+      background-color: #4ca332;
+    }
+    .mc-btn-gold {
+      background-color: #c99316;
+      color: #ffffff;
+    }
+    .mc-btn-gold:hover:not(:disabled) {
+      background-color: #e0a720;
+    }
+    .mc-btn-dark {
+      background-color: #313238;
+      color: #e2e8f0;
+    }
+    .mc-btn-dark:hover:not(:disabled) {
+      background-color: #3f414a;
+    }
+    .mc-btn-danger {
+      background-color: #991b1b;
+      color: #fecaca;
+    }
+    .mc-btn-danger:hover:not(:disabled) {
+      background-color: #b91c1c;
+    }
+
+    /* Minecraft 公式サイト風パネル装飾 */
+    .mc-panel {
+      background-color: #1c1d22;
+      border: 2px solid #2e3038;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+    .mc-input {
+      background-color: #101114;
+      border: 2px solid #3b3d47;
+      color: #f1f5f9;
+    }
+    .mc-input:focus {
+      border-color: #52a535;
+      outline: none;
+    }
+  </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col">
+
+  <!-- グローバルヘッダー (Minecraft公式サイトスタイル) -->
+  <header class="bg-[#18191d] border-b-2 border-[#2b2d35] sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <!-- SSS ブランドプレフィックス -->
+        <span class="bg-[#24252c] text-[#86D562] border border-[#3f414d] px-2.5 py-1 text-xs tracking-wider rounded">
+          SSS
+        </span>
+        <div class="flex items-baseline gap-2">
+          <h1 class="text-lg md:text-xl font-bold tracking-wide text-white flex items-center gap-2">
+            <span class="text-[#86D562]">⛏️</span> SSS Minecraft Sound Packager
+          </h1>
+          <span class="hidden sm:inline text-xs text-slate-400">| マルチバージョン対応 音声パック作成・編集ツール</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- 既存ZIP読み込み -->
+    <section class="mc-panel p-5">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-base font-bold text-[#FFD953] flex items-center gap-2">
+          <span>📦</span> 既存のパックZIPを読み込んで編集
+        </h2>
+        <span class="text-[11px] text-slate-400">作成済パックの更新・ID変更に対応</span>
+      </div>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        以前作成したZIPや既存のリソースパックをアップロードすると、音声や設定を展開して再編集できます。
+      </p>
+      <input type="file" id="zipInput" accept=".zip" class="block w-full text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-xs file:font-bold file:bg-[#2b2d36] file:text-white hover:file:bg-[#383a45] cursor-pointer mc-input p-1 rounded">
+    </section>
+
+    <!-- バージョン選択 & パック基本設定 -->
+    <section class="mc-panel p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- バージョン切り替え -->
+      <div>
+        <label class="block text-xs text-[#86D562] mb-1 font-bold">Minecraft バージョン <span class="text-rose-400">*</span></label>
+        <select id="targetVersion" class="w-full mc-input rounded px-3 py-2 text-sm focus:outline-none cursor-pointer">
+          <option value="1.21" data-format="34" data-mode="datapack_modern">1.21 ～ 1.21.1 (Format: 34)</option>
+          <option value="1.20" data-format="15" data-mode="datapack_modern" selected>1.20 ～ 1.20.1 (Format: 15)</option>
+          <option value="1.19.4" data-format="13" data-mode="datapack_modern">1.19.3 ～ 1.19.4 (Format: 13)</option>
+          <option value="1.19" data-format="9" data-mode="datapack_modern">1.19 ～ 1.19.2 (Format: 9)</option>
+          <option value="1.18" data-format="8" data-mode="datapack_modern">1.18 ～ 1.18.2 (Format: 8)</option>
+          <option value="1.17" data-format="7" data-mode="datapack_modern">1.17 ～ 1.17.1 (Format: 7)</option>
+          <option value="1.16" data-format="6" data-mode="datapack_modern">1.16.2 ～ 1.16.5 (Format: 6)</option>
+          <option value="1.12" data-format="3" data-mode="function_legacy">1.12 ～ 1.12.2 (Format: 3)</option>
+          <option value="1.9" data-format="2" data-mode="resource_only_1_9">1.9 ～ 1.10.2 (Format: 2)</option>
+          <option value="1.7" data-format="1" data-mode="resource_only_legacy">1.7.2 ～ 1.8.9 (Format: 1)</option>
+        </select>
+        <p id="versionNote" class="text-[11px] text-slate-400 mt-1">pack_format: 15</p>
+      </div>
+
+      <!-- Namespace -->
+      <div>
+        <label class="block text-xs text-[#86D562] mb-1 font-bold">名前空間 (Namespace) <span class="text-rose-400">*</span></label>
+        <input type="text" id="namespace" value="custom_sound" pattern="[a-z0-9_.-]+" class="w-full mc-input rounded px-3 py-2 text-sm focus:outline-none">
+        <p class="text-[11px] text-slate-400 mt-1">※半角英小文字・数字・アンダースコア(_)推奨</p>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label class="block text-xs text-[#86D562] mb-1 font-bold">パックの説明 (Description)</label>
+        <input type="text" id="packDesc" value="SSS Custom Sound Pack" class="w-full mc-input rounded px-3 py-2 text-sm focus:outline-none">
+        <p class="text-[11px] text-slate-400 mt-1">pack.mcmeta に記載される説明文</p>
+      </div>
+    </section>
+
+    <!-- 音声の切り出し登録（トリミング専用） -->
+    <section class="mc-panel p-5 border-2 border-[#4b4e5c] space-y-4">
+      <div class="flex items-center justify-between border-b border-[#2b2d35] pb-3">
+        <h2 class="text-base font-bold text-[#70DFFF] flex items-center gap-2">
+          <span>✂️</span> 音声トリミング＆切り出し登録
+        </h2>
+        <span class="text-[11px] bg-[#1a2333] text-[#70DFFF] border border-[#2b4166] px-2 py-0.5 rounded">
+          ファイル保持モード
+        </span>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        長尺ファイルから特定区間を切り出して登録します。切り出し後も元のファイルは維持されるため、<strong>同一ファイルから複数の音声区間を連続して切り出し可能</strong>です。
+      </p>
+
+      <!-- 切り出し元ファイルのアップロード -->
+      <div>
+        <label class="block text-xs text-slate-300 mb-1">切り出し元の音声ファイルを選択 (.mp3, .wav, .ogg, .m4a など)</label>
+        <input type="file" id="trimFileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac" class="block w-full text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-xs file:font-bold file:bg-[#2b2d36] file:text-white hover:file:bg-[#383a45] cursor-pointer mc-input p-1 rounded">
+      </div>
+
+      <!-- 操作コンソール -->
+      <div id="trimControls" class="hidden bg-[#141518] p-4 border border-[#2b2d35] rounded space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#24252c] pb-3">
+          <div class="text-xs">
+            <span class="text-slate-400 block">読み込み中の元ファイル:</span>
+            <span id="trimFileName" class="font-bold text-[#70DFFF] text-sm"></span>
+            <span id="trimFileDuration" class="text-slate-400 ml-2"></span>
+          </div>
+          <audio id="trimAudioPlayer" controls class="h-8 max-w-[280px]"></audio>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- 開始時間 -->
+          <div class="bg-[#1b1c21] p-3 border border-[#2e303a] rounded space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-xs text-slate-300 font-bold">開始時間 (秒)</label>
+              <button id="setStartToCurrentBtn" class="mc-btn mc-btn-dark text-[10px] px-2 py-0.5 rounded">
+                現在の再生位置を開始に設定
+              </button>
+            </div>
+            <input type="number" id="startTimeInput" min="0" step="0.01" value="0.00" class="w-full mc-input rounded px-2 py-1 text-[#86D562] font-mono text-sm">
+          </div>
+
+          <!-- 終了時間 -->
+          <div class="bg-[#1b1c21] p-3 border border-[#2e303a] rounded space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-xs text-slate-300 font-bold">終了時間 (秒)</label>
+              <button id="setEndToCurrentBtn" class="mc-btn mc-btn-dark text-[10px] px-2 py-0.5 rounded">
+                現在の再生位置を終了に設定
+              </button>
+            </div>
+            <input type="number" id="endTimeInput" min="0" step="0.01" value="5.00" class="w-full mc-input rounded px-2 py-1 text-[#86D562] font-mono text-sm">
+          </div>
+        </div>
+
+        <!-- プレビューと追加 -->
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-1">
+          <div class="flex-1">
+            <label class="block text-xs text-slate-300 mb-1 font-bold">切り出し後のサウンドID <span class="text-rose-400">*</span></label>
+            <input type="text" id="trimSoundIdInput" placeholder="例: intro_bgm" class="w-full mc-input rounded px-3 py-1.5 text-white font-mono text-sm">
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="playRangeBtn" class="mc-btn mc-btn-dark text-xs py-2 px-3 rounded font-bold">
+              ▶ 範囲を試聴
+            </button>
+            <button id="commitTrimBtn" class="mc-btn mc-btn-gold text-xs py-2 px-4 rounded font-bold flex items-center gap-1">
+              <span>✂️ 一覧に追加</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 音声の一括追加（丸ごと変換追加） -->
+    <section class="mc-panel p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#2b2d35] pb-3">
+        <h2 class="text-base font-bold text-[#86D562]">➕ 音声の一括追加 (丸ごと追加)</h2>
+        <span class="text-xs bg-[#192b1b] text-[#86D562] border border-[#2f5e33] px-2 py-0.5 rounded">
+          ✨ MP3 / WAV を自動で OGG へ変換
+        </span>
+      </div>
+
+      <!-- ドロップゾーン -->
+      <div id="dropZone" class="border-2 border-dashed border-[#3d404d] hover:border-[#86D562] bg-[#141519] rounded p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2">
+        <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p class="text-sm font-bold text-slate-200">
+          ここに音声ファイルをドラッグ＆ドロップ (複数可)
+        </p>
+        <p class="text-xs text-slate-400">
+          または <span class="text-[#86D562] underline">ファイルを選択</span> (.mp3, .wav, .ogg, .m4a, .flac)
+        </p>
+        <input type="file" id="bulkAudioInput" multiple accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac" class="hidden">
+      </div>
+
+      <!-- プログレス -->
+      <div id="progressBox" class="hidden text-xs py-2 px-3 rounded bg-[#2b220d] border border-[#7a5c1a] text-[#ffd953] flex items-center gap-2">
+        <svg class="animate-spin h-4 w-4 text-[#ffd953] shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span id="progressText">音声を変換処理中...</span>
+      </div>
+    </section>
+
+    <!-- 音声登録リスト -->
+    <section class="mc-panel p-5 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2b2d35] pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white">
+            📋 登録音声一覧 (<span id="validCount" class="text-[#86D562]">0</span> / 全<span id="totalCount">0</span>件)
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">※サウンドIDが設定された音声のみZIPに出力されます。</p>
+        </div>
+        <button id="clearEmptyBtn" class="mc-btn mc-btn-dark text-xs px-3 py-1.5 rounded self-start sm:self-auto">
+          ID未設定を一括削除
+        </button>
+      </div>
+
+      <div id="soundList" class="space-y-3">
+        <p class="text-xs text-slate-500 text-center py-6">音声ファイルがまだ登録されていません。</p>
+      </div>
+    </section>
+
+    <!-- 出力・ダウンロード -->
+    <div class="text-center py-4">
+      <button id="downloadZipBtn" class="mc-btn mc-btn-green text-sm sm:text-base font-bold py-3.5 px-8 rounded shadow-lg">
+        ⛏️ パックZIPを作成・ダウンロード
+      </button>
+    </div>
+
+    <!-- 使い方・コマンドガイド (選択バージョンと完全連動) -->
+    <section class="mc-panel p-5 text-xs text-slate-400 space-y-3">
+      <h3 class="text-sm font-bold text-[#FFD953] flex items-center gap-1.5">
+        <span>💡</span> ゲーム内での導入・再生方法 (<span id="guideVersionLabel" class="text-[#86D562]">Minecraft 1.20 ～ 1.20.1</span>)
+      </h3>
+      <div id="guideContent" class="space-y-2 leading-relaxed">
+        <!-- JSにより動的に生成されます -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- フッター (Minecraft公式サイトスタイル) -->
+  <footer class="bg-[#141518] border-t border-[#23242a] py-6 px-4 text-xs text-slate-400 mt-auto">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="bg-[#24252c] text-[#86D562] border border-[#3f414d] px-2 py-0.5 text-[11px] rounded font-bold">
+          SSS
+        </span>
+        <span>© 2026 SSS Minecraft Sound Packager. All Rights Reserved.</span>
+      </div>
+      
+      <!-- ユーザー管理サイト共通プライバシーポリシーリンク -->
+      <div class="flex items-center gap-4">
+        <a href="https://sss-sites.github.io/privacy-policy/" id="privacyPolicyLink" class="text-slate-400 hover:text-white underline underline-offset-4 transition">
+          プライバシーポリシー (Privacy Policy)
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 状態管理
+    let sounds = []; // { uid, id, originalName, fileName, blob, audioUrl, converted, isTrimmed }
+    let audioContext = null;
+
+    // トリミング状態
+    let currentTrimAudioBuffer = null;
+    let currentTrimFileName = "";
+    let currentTrimAudioUrl = null;
+    let rangePlayTimeout = null;
+
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioContext;
+    }
+
+    // 要素取得
+    const dropZone = document.getElementById('dropZone');
+    const bulkAudioInput = document.getElementById('bulkAudioInput');
+    const progressBox = document.getElementById('progressBox');
+    const progressText = document.getElementById('progressText');
+    const soundList = document.getElementById('soundList');
+    const totalCount = document.getElementById('totalCount');
+    const validCount = document.getElementById('validCount');
+    const clearEmptyBtn = document.getElementById('clearEmptyBtn');
+    const downloadZipBtn = document.getElementById('downloadZipBtn');
+    const zipInput = document.getElementById('zipInput');
+    const namespaceInput = document.getElementById('namespace');
+    const packDescInput = document.getElementById('packDesc');
+    const targetVersionSelect = document.getElementById('targetVersion');
+    const versionNote = document.getElementById('versionNote');
+
+    // ガイド連動要素
+    const guideVersionLabel = document.getElementById('guideVersionLabel');
+    const guideContent = document.getElementById('guideContent');
+
+    // トリミング要素
+    const trimFileInput = document.getElementById('trimFileInput');
+    const trimControls = document.getElementById('trimControls');
+    const trimFileName = document.getElementById('trimFileName');
+    const trimFileDuration = document.getElementById('trimFileDuration');
+    const trimAudioPlayer = document.getElementById('trimAudioPlayer');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
+    const setStartToCurrentBtn = document.getElementById('setStartToCurrentBtn');
+    const setEndToCurrentBtn = document.getElementById('setEndToCurrentBtn');
+    const trimSoundIdInput = document.getElementById('trimSoundIdInput');
+    const playRangeBtn = document.getElementById('playRangeBtn');
+    const commitTrimBtn = document.getElementById('commitTrimBtn');
+
+    /* -------------------------------------------------------------
+       バージョン選択とガイド・仕様の完全連動
+    ------------------------------------------------------------- */
+    function updateVersionUI() {
+      const selectedOption = targetVersionSelect.options[targetVersionSelect.selectedIndex];
+      const format = selectedOption.getAttribute('data-format');
+      const mode = selectedOption.getAttribute('data-mode');
+      const verText = selectedOption.text.split(' (')[0];
+      const ns = namespaceInput.value.trim() || 'custom_sound';
+
+      guideVersionLabel.textContent = `Minecraft ${verText}`;
+
+      let guideHtml = '';
+
+      if (mode === 'resource_only_legacy') {
+        // 1.7.2 ～ 1.8.9: カテゴリ指定なし、データパック/ファンクションなし
+        versionNote.textContent = `pack_format: ${format} (リソースパック専用 / コマンドにカテゴリ引数なし)`;
+        guideHtml = `
+          <ol class="list-decimal list-inside space-y-2">
+            <li>ダウンロードしたZIPを <code>.minecraft/resourcepacks</code> フォルダに入れます。</li>
+            <li>ゲームを起動し、「設定」＞「リソースパック」からパックを有効化します。</li>
+            <li>
+              ゲーム内のチャットやコマンドブロックで再生:
+              <div class="mt-1">
+                <code class="bg-[#101114] text-[#86D562] px-2 py-1 border border-[#2b2d35] rounded font-mono inline-block">
+                  /playsound ${ns}:&lt;サウンドID&gt; @a ~ ~ ~ 1 1
+                </code>
+              </div>
+              <span class="text-[11px] text-amber-400 block mt-1">
+                ※1.8以前の /playsound は仕様上サウンドカテゴリ（masterなど）の引数が不要です。
+              </span>
+            </li>
+          </ol>
+        `;
+      } else if (mode === 'resource_only_1_9') {
+        // 1.9 ～ 1.10.2: カテゴリ指定追加、データパック/ファンクションなし
+        versionNote.textContent = `pack_format: ${format} (リソースパック専用 / データパック非対応世代)`;
+        guideHtml = `
+          <ol class="list-decimal list-inside space-y-2">
+            <li>ダウンロードしたZIPを <code>.minecraft/resourcepacks</code> フォルダに入れます。</li>
+            <li>ゲームを起動し、「設定」＞「リソースパック」からパックを有効化します。</li>
+            <li>
+              ゲーム内のチャットやコマンドブロックで再生:
+              <div class="mt-1">
+                <code class="bg-[#101114] text-[#86D562] px-2 py-1 border border-[#2b2d35] rounded font-mono inline-block">
+                  /playsound ${ns}:&lt;サウンドID&gt; master @a ~ ~ ~ 1 1
+                </code>
+              </div>
+              <span class="text-[11px] text-slate-400 block mt-1">
+                ※1.9以降はカテゴリ指定（master, music, record, weather等）が必須となります。
+              </span>
+            </li>
+          </ol>
+        `;
+      } else if (mode === 'function_legacy') {
+        // 1.12 ～ 1.12.2: 初代function機能（ワールドのdata/functions直下）
+        versionNote.textContent = `pack_format: ${format} (1.12独自ファンクション対応)`;
+        guideHtml = `
+          <ol class="list-decimal list-inside space-y-2">
+            <li>ダウンロードしたZIPを <code>.minecraft/resourcepacks</code> に入れ、リソースパックとして有効化します。</li>
+            <li>
+              ファンクションを利用する場合: ZIP内の <code>data</code> フォルダを展開し、対象ワールドの <code>data/functions</code> フォルダ内に配置します（ワールド内で <code>/reload</code> 実行）。
+            </li>
+            <li>
+              コマンドで再生:
+              <div class="mt-1">
+                <code class="bg-[#101114] text-[#86D562] px-2 py-1 border border-[#2b2d35] rounded font-mono inline-block">
+                  /playsound ${ns}:&lt;サウンドID&gt; master @a ~ ~ ~ 1 1
+                </code>
+              </div>
+            </li>
+            <li>
+              ファンクションで再生:
+              <div class="mt-1">
+                <code class="bg-[#101114] text-[#86D562] px-2 py-1 border border-[#2b2d35] rounded font-mono inline-block">
+                  /function ${ns}:play_&lt;サウンドID&gt;
+                </code>
+              </div>
+            </li>
+          </ol>
+        `;
+      } else {
+        // 1.13 ～ 1.21.1: 現代のデータパック・リソースパック両立型
+        versionNote.textContent = `pack_format: ${format} (リソースパック＆データパック両立)`;
+        guideHtml = `
+          <ol class="list-decimal list-inside space-y-2">
+            <li>ダウンロードしたZIPを <code>.minecraft/resourcepacks</code> に入れ、リソースパックとして有効化します。</li>
+            <li>
+              同じZIPをワールドフォルダ内の <code>datapacks</code> フォルダに入れると、ファンクション実行用データパックとしても自動認識されます（ゲーム内で <code>/reload</code> 実行）。
+            </li>
+            <li>
+              コマンドで再生:
+              <div class="mt-1">
+                <code class="bg-[#101114] text-[#86D562] px-2 py-1 border border-[#2b2d35] rounded font-mono inline-block">
+                  /playsound ${ns}:&lt;サウンドID&gt; master @a ~ ~ ~ 1 1
+                </code>
+              </div>
+            </li>
+            <li>
+              データパックのファンクションで再生:
+              <div class="mt-1">
+                <code class="bg-[#101114] text-[#86D562] px-2 py-1 border border-[#2b2d35] rounded font-mono inline-block">
+                  /function ${ns}:play_&lt;サウンドID&gt;
+                </code>
+              </div>
+            </li>
+          </ol>
+        `;
+      }
+
+      guideContent.innerHTML = guideHtml;
+    }
+
+    targetVersionSelect.addEventListener('change', updateVersionUI);
+    namespaceInput.addEventListener('input', updateVersionUI);
+    updateVersionUI();
+
+    // Float32Array チャンネルデータを Ogg Vorbis にエンコード
+    function encodeChannelsToOgg(channels, sampleRate) {
+      const numChannels = channels.length;
+      const encoder = new OggVorbisEncoder(sampleRate, numChannels, 0.6);
+      encoder.encode(channels);
+      return encoder.finish('audio/ogg');
+    }
+
+    // 全編 Ogg 変換
+    async function convertToOgg(file) {
+      const ctx = getAudioContext();
+      const arrayBuffer = await file.arrayBuffer();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+      const channels = [];
+      for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+        channels.push(audioBuffer.getChannelData(c));
+      }
+      return encodeChannelsToOgg(channels, audioBuffer.sampleRate);
+    }
+
+    /* -------------------------------------------------------------
+       1. トリミング機能
+    ------------------------------------------------------------- */
+    trimFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const ctx = getAudioContext();
+        const arrayBuffer = await file.arrayBuffer();
+        currentTrimAudioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        currentTrimFileName = file.name;
+
+        if (currentTrimAudioUrl) URL.revokeObjectURL(currentTrimAudioUrl);
+        currentTrimAudioUrl = URL.createObjectURL(file);
+
+        trimAudioPlayer.src = currentTrimAudioUrl;
+        trimFileName.textContent = file.name;
+        const dur = currentTrimAudioBuffer.duration;
+        trimFileDuration.textContent = `(総再生時間: ${dur.toFixed(2)}秒)`;
+
+        startTimeInput.value = "0.00";
+        endTimeInput.value = Math.min(5, dur).toFixed(2);
+        endTimeInput.max = dur.toFixed(2);
+        startTimeInput.max = dur.toFixed(2);
+
+        const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        trimSoundIdInput.value = baseName.toLowerCase().replace(/[^a-z0-9_]/g, '_') + '_part1';
+
+        trimControls.classList.remove('hidden');
+      } catch (err) {
+        console.error(err);
+        alert('音声の読み込み・デコードに失敗しました: ' + err.message);
+      }
+    });
+
+    setStartToCurrentBtn.addEventListener('click', () => {
+      startTimeInput.value = trimAudioPlayer.currentTime.toFixed(2);
+    });
+    setEndToCurrentBtn.addEventListener('click', () => {
+      endTimeInput.value = trimAudioPlayer.currentTime.toFixed(2);
+    });
+
+    playRangeBtn.addEventListener('click', () => {
+      const start = parseFloat(startTimeInput.value) || 0;
+      const end = parseFloat(endTimeInput.value) || 0;
+      if (start >= end) {
+        alert('開始時間は終了時間より前に設定してください。');
+        return;
+      }
+      if (rangePlayTimeout) clearTimeout(rangePlayTimeout);
+
+      trimAudioPlayer.currentTime = start;
+      trimAudioPlayer.play();
+
+      const durationMs = (end - start) * 1000;
+      rangePlayTimeout = setTimeout(() => {
+        trimAudioPlayer.pause();
+      }, durationMs);
+    });
+
+    commitTrimBtn.addEventListener('click', async () => {
+      if (!currentTrimAudioBuffer) return;
+
+      const start = parseFloat(startTimeInput.value) || 0;
+      const end = parseFloat(endTimeInput.value) || 0;
+      const id = trimSoundIdInput.value.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
+
+      if (!id) {
+        alert('サウンドIDを入力してください。');
+        return;
+      }
+      if (start >= end) {
+        alert('開始時間は終了時間より前に設定してください。');
+        return;
+      }
+
+      commitTrimBtn.disabled = true;
+      commitTrimBtn.classList.add('opacity-50');
+
+      try {
+        const sampleRate = currentTrimAudioBuffer.sampleRate;
+        const startSample = Math.floor(start * sampleRate);
+        const endSample = Math.min(Math.floor(end * sampleRate), currentTrimAudioBuffer.length);
+
+        if (endSample <= startSample) {
+          alert('範囲が無効です。');
+          return;
+        }
+
+        const channels = [];
+        for (let c = 0; c < currentTrimAudioBuffer.numberOfChannels; c++) {
+          const fullChannel = currentTrimAudioBuffer.getChannelData(c);
+          channels.push(fullChannel.subarray(startSample, endSample));
+        }
+
+        const trimmedBlob = encodeChannelsToOgg(channels, sampleRate);
+        const audioUrl = URL.createObjectURL(trimmedBlob);
+        const uid = 'snd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
+        sounds.push({
+          uid: uid,
+          id: id,
+          originalName: `${currentTrimFileName} [${start.toFixed(1)}s-${end.toFixed(1)}s]`,
+          fileName: `${id}.ogg`,
+          blob: trimmedBlob,
+          audioUrl: audioUrl,
+          converted: true,
+          isTrimmed: true
+        });
+
+        renderList();
+
+        const match = id.match(/^(.*?)(\d+)$/);
+        if (match) {
+          trimSoundIdInput.value = `${match[1]}${parseInt(match[2], 10) + 1}`;
+        } else {
+          trimSoundIdInput.value = `${id}_next`;
+        }
+      } catch (err) {
+        console.error(err);
+        alert('切り出しエンコードに失敗しました: ' + err.message);
+      } finally {
+        commitTrimBtn.disabled = false;
+        commitTrimBtn.classList.remove('opacity-50');
+      }
+    });
+
+    /* -------------------------------------------------------------
+       2. 音声の一括追加
+    ------------------------------------------------------------- */
+    async function handleFiles(files) {
+      if (!files || files.length === 0) return;
+
+      progressBox.classList.remove('hidden');
+      const total = files.length;
+
+      for (let i = 0; i < total; i++) {
+        const file = files[i];
+        progressText.textContent = `[${i + 1}/${total}] 「${file.name}」を変換・処理中...`;
+        await new Promise(r => setTimeout(r, 20));
+
+        try {
+          const isOgg = file.name.toLowerCase().endsWith('.ogg');
+          let finalBlob = file;
+
+          if (!isOgg) {
+            finalBlob = await convertToOgg(file);
+          }
+
+          const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+          const defaultId = baseName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+          const uid = 'snd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+          const audioUrl = URL.createObjectURL(finalBlob);
+
+          sounds.push({
+            uid: uid,
+            id: defaultId,
+            originalName: file.name,
+            fileName: `${defaultId}.ogg`,
+            blob: finalBlob,
+            audioUrl: audioUrl,
+            converted: !isOgg,
+            isTrimmed: false
+          });
+        } catch (err) {
+          console.error(`「${file.name}」の処理に失敗:`, err);
+        }
+      }
+
+      progressBox.classList.add('hidden');
+      bulkAudioInput.value = '';
+      renderList();
+    }
+
+    dropZone.addEventListener('click', () => bulkAudioInput.click());
+    bulkAudioInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-[#86D562]', 'bg-[#181a20]');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-[#86D562]', 'bg-[#181a20]');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-[#86D562]', 'bg-[#181a20]');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+
+    /* -------------------------------------------------------------
+       3. 音声リスト描画
+    ------------------------------------------------------------- */
+    function renderList() {
+      const activeSounds = sounds.filter(s => s.id.trim() !== '');
+      validCount.textContent = activeSounds.length;
+      totalCount.textContent = sounds.length;
+
+      if (sounds.length === 0) {
+        soundList.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">音声ファイルがまだ登録されていません。</p>';
+        return;
+      }
+
+      soundList.innerHTML = '';
+      const ns = namespaceInput.value.trim() || 'custom_sound';
+      const selectedOption = targetVersionSelect.options[targetVersionSelect.selectedIndex];
+      const isLegacy = selectedOption.getAttribute('data-mode') === 'resource_only_legacy';
+
+      sounds.forEach((item) => {
+        const isValid = item.id.trim() !== '';
+        const row = document.createElement('div');
+        row.className = `p-3 rounded border transition ${
+          isValid 
+            ? 'bg-[#15161a] border-[#2c2d36]' 
+            : 'bg-[#15161a]/40 border-dashed border-[#3a2528] opacity-60'
+        } flex flex-col md:flex-row md:items-center justify-between gap-3`;
+
+        const commandPreview = isLegacy
+          ? `(/playsound ${ns}:${item.id} @a ~ ~ ~ 1 1)`
+          : `(/playsound ${ns}:${item.id} master @a ~ ~ ~ 1 1)`;
+
+        row.innerHTML = `
+          <div class="flex-1 space-y-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs text-slate-300 bg-[#212228] px-2 py-0.5 rounded truncate max-w-[240px]" title="${item.originalName}">
+                📁 ${item.originalName}
+              </span>
+              ${item.isTrimmed ? '<span class="text-[10px] bg-[#1c2738] text-[#70DFFF] border border-[#2b4166] px-1.5 py-0.5 rounded">✂️ 切り出し</span>' : ''}
+              ${item.converted && !item.isTrimmed ? '<span class="text-[10px] bg-[#1e2330] text-[#70DFFF] px-1.5 py-0.5 rounded border border-[#2d3a54]">OGG変換済</span>' : ''}
+              ${isValid 
+                ? '<span class="text-[10px] bg-[#18291b] text-[#86D562] border border-[#274c2d] px-1.5 py-0.5 rounded">✓ ZIP対象</span>' 
+                : '<span class="text-[10px] bg-[#31181b] text-[#fca5a5] border border-[#59262b] px-1.5 py-0.5 rounded">✕ 未設定(除外)</span>'
+              }
+            </div>
+
+            <!-- サウンドID -->
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-400 font-bold">サウンドID:</label>
+              <input type="text" value="${item.id}" placeholder="空欄で除外" 
+                class="sound-id-input mc-input rounded px-2 py-1 text-xs text-[#86D562] font-mono w-52"
+                data-uid="${item.uid}">
+              <span class="text-[11px] text-slate-500 font-mono hidden sm:inline">
+                ${isValid ? commandPreview : ''}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 self-end md:self-center">
+            <audio controls src="${item.audioUrl}" class="h-7 max-w-[190px]"></audio>
+            <button onclick="removeSound('${item.uid}')" class="mc-btn mc-btn-danger text-[11px] px-2.5 py-1 rounded">
+              削除
+            </button>
+          </div>
+        `;
+        soundList.appendChild(row);
+      });
+
+      document.querySelectorAll('.sound-id-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const uid = e.target.getAttribute('data-uid');
+          const cleanId = e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
+          const targetItem = sounds.find(s => s.uid === uid);
+          if (targetItem) {
+            targetItem.id = cleanId;
+            targetItem.fileName = `${cleanId}.ogg`;
+            const valid = sounds.filter(s => s.id.trim() !== '').length;
+            validCount.textContent = valid;
+            const parent = e.target.closest('.rounded');
+            if (cleanId.trim() === '') {
+              parent.classList.add('bg-[#15161a]/40', 'border-dashed', 'opacity-60');
+              parent.classList.remove('bg-[#15161a]', 'border-[#2c2d36]');
+            } else {
+              parent.classList.remove('bg-[#15161a]/40', 'border-dashed', 'opacity-60');
+              parent.classList.add('bg-[#15161a]', 'border-[#2c2d36]');
+            }
+          }
+        });
+
+        input.addEventListener('blur', () => {
+          renderList();
+        });
+      });
+    }
+
+    window.removeSound = function(uid) {
+      const index = sounds.findIndex(s => s.uid === uid);
+      if (index !== -1) {
+        URL.revokeObjectURL(sounds[index].audioUrl);
+        sounds.splice(index, 1);
+        renderList();
+      }
+    };
+
+    clearEmptyBtn.addEventListener('click', () => {
+      const removed = sounds.filter(s => s.id.trim() === '');
+      removed.forEach(s => URL.revokeObjectURL(s.audioUrl));
+      sounds = sounds.filter(s => s.id.trim() !== '');
+      renderList();
+    });
+
+    /* -------------------------------------------------------------
+       4. 既存ZIPの読み込み
+    ------------------------------------------------------------- */
+    zipInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const zip = await JSZip.loadAsync(file);
+
+        // pack.mcmeta の解析
+        const mcmetaFile = zip.file('pack.mcmeta');
+        if (mcmetaFile) {
+          const mcmetaText = await mcmetaFile.async('text');
+          try {
+            const mcmeta = JSON.parse(mcmetaText);
+            if (mcmeta.pack) {
+              if (mcmeta.pack.description) {
+                packDescInput.value = mcmeta.pack.description;
+              }
+              if (mcmeta.pack.pack_format) {
+                const fmt = mcmeta.pack.pack_format;
+                for (let i = 0; i < targetVersionSelect.options.length; i++) {
+                  if (targetVersionSelect.options[i].getAttribute('data-format') == fmt) {
+                    targetVersionSelect.selectedIndex = i;
+                    updateVersionUI();
+                    break;
+                  }
+                }
+              }
+            }
+          } catch(err){}
+        }
+
+        let detectedNamespace = '';
+        let soundsJson = null;
+
+        for (const relativePath of Object.keys(zip.files)) {
+          const match = relativePath.match(/^assets\/([^/]+)\/sounds\.json$/);
+          if (match) {
+            detectedNamespace = match[1];
+            const text = await zip.file(relativePath).async('text');
+            soundsJson = JSON.parse(text);
+            break;
+          }
+        }
+
+        if (!soundsJson) {
+          alert('ZIP内に assets/<namespace>/sounds.json が見つかりませんでした。');
+          return;
+        }
+
+        namespaceInput.value = detectedNamespace;
+
+        sounds.forEach(s => URL.revokeObjectURL(s.audioUrl));
+        sounds = [];
+
+        for (const [soundId, config] of Object.entries(soundsJson)) {
+          let soundPathInJson = "";
+          if (config.sounds && config.sounds.length > 0) {
+            soundPathInJson = typeof config.sounds[0] === 'string' ? config.sounds[0] : config.sounds[0].name;
+          }
+
+          let actualSubPath = soundPathInJson;
+          if (soundPathInJson.includes(':')) {
+            actualSubPath = soundPathInJson.split(':')[1];
+          }
+
+          const oggPath = `assets/${detectedNamespace}/sounds/${actualSubPath}.ogg`;
+          const soundZipFile = zip.file(oggPath);
+
+          if (soundZipFile) {
+            const blob = await soundZipFile.async('blob');
+            const audioUrl = URL.createObjectURL(blob);
+            sounds.push({
+              uid: 'snd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+              id: soundId,
+              originalName: `${actualSubPath}.ogg`,
+              fileName: `${soundId}.ogg`,
+              blob: blob,
+              audioUrl: audioUrl,
+              converted: false,
+              isTrimmed: false
+            });
+          }
+        }
+
+        renderList();
+        alert(`ZIPを読み込みました！ ${sounds.length} 件の音声を編集可能です。`);
+      } catch (err) {
+        console.error(err);
+        alert('ZIP読み込みに失敗しました: ' + err.message);
+      }
+    });
+
+    /* -------------------------------------------------------------
+       5. ZIP生成 & ダウンロード
+    ------------------------------------------------------------- */
+    downloadZipBtn.addEventListener('click', async () => {
+      const activeSounds = sounds.filter(s => s.id.trim() !== '');
+
+      if (activeSounds.length === 0) {
+        alert('IDが設定されている音声がありません。サウンドIDを入力してください。');
+        return;
+      }
+
+      const idMap = new Set();
+      for (const item of activeSounds) {
+        if (idMap.has(item.id)) {
+          alert(`サウンドID「${item.id}」が重複しています。別のIDを設定してください。`);
+          return;
+        }
+        idMap.add(item.id);
+      }
+
+      const selectedOption = targetVersionSelect.options[targetVersionSelect.selectedIndex];
+      const packFormat = parseInt(selectedOption.getAttribute('data-format'), 10) || 15;
+      const mode = selectedOption.getAttribute('data-mode');
+      const verKey = selectedOption.value;
+
+      const ns = namespaceInput.value.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '_') || 'custom_sound';
+      const desc = packDescInput.value.trim() || 'SSS Custom Sound Pack';
+
+      const zip = new JSZip();
+
+      // pack.mcmeta の生成
+      zip.file('pack.mcmeta', JSON.stringify({
+        pack: {
+          pack_format: packFormat,
+          description: desc
+        }
+      }, null, 2));
+
+      // sounds.json の構築
+      const soundsJson = {};
+      activeSounds.forEach(item => {
+        soundsJson[item.id] = {
+          category: "master",
+          sounds: [
+            `${ns}:${item.id}`
+          ]
+        };
+
+        // 音声OGGファイル
+        zip.file(`assets/${ns}/sounds/${item.id}.ogg`, item.blob);
+
+        // ファンクション対応世代（1.12以降）の場合、ファンクションファイルを同梱
+        if (mode === 'datapack_modern') {
+          // 1.13以降（データパック）
+          const functionContent = `# Plays sound: ${item.id}\nplaysound ${ns}:${item.id} master @a ~ ~ ~ 1 1\n`;
+          zip.file(`data/${ns}/functions/play_${item.id}.mcfunction`, functionContent);
+        } else if (mode === 'function_legacy') {
+          // 1.12.x
+          const functionContent = `# Plays sound: ${item.id}\nplaysound ${ns}:${item.id} master @a ~ ~ ~ 1 1\n`;
+          zip.file(`data/${ns}/functions/play_${item.id}.mcfunction`, functionContent);
+        }
+      });
+
+      zip.file(`assets/${ns}/sounds.json`, JSON.stringify(soundsJson, null, 2));
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const downloadUrl = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `SSS_${ns}_soundpack_${verKey}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    });
+  </script>
+</body>
+</html>
